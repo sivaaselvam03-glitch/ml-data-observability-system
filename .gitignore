@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pkl
+.env
+logs/
+data/snapshots/
+*.log
+.ipynb_checkpoints/
+Thumbs.db
+desktop.ini
