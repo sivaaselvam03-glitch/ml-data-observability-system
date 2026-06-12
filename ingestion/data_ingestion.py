@@ -1,10 +1,4 @@
-"""
-=============================================================
-MODULE: ingestion/data_ingestion.py
-PURPOSE: Load CSV, add ingestion timestamp, simulate daily
-         snapshots, handle corrupt/missing files.
-=============================================================
-"""
+
 
 import os
 import shutil
@@ -13,7 +7,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import random
 
-# ── Logger ────────────────────────────────────────────────
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s"
@@ -21,9 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ─────────────────────────────────────────────────────────
-# 1. LOAD CSV
-# ─────────────────────────────────────────────────────────
+
 def load_csv(filepath: str) -> pd.DataFrame:
     """
     Load a CSV file safely.
@@ -58,9 +50,7 @@ def load_csv(filepath: str) -> pd.DataFrame:
         raise
 
 
-# ─────────────────────────────────────────────────────────
-# 2. ADD INGESTION TIMESTAMP
-# ─────────────────────────────────────────────────────────
+
 def add_ingestion_timestamp(df: pd.DataFrame,
                              timestamp: datetime = None) -> pd.DataFrame:
     """
@@ -82,9 +72,7 @@ def add_ingestion_timestamp(df: pd.DataFrame,
     return df
 
 
-# ─────────────────────────────────────────────────────────
-# 3. SIMULATE DAILY SNAPSHOTS
-# ─────────────────────────────────────────────────────────
+
 def simulate_daily_snapshots(
     source_filepath: str,
     snapshots_dir: str,
@@ -118,25 +106,25 @@ def simulate_daily_snapshots(
         day = base_date + timedelta(days=i)
         day_str = day.strftime("%Y-%m-%d")
 
-        # ── Simulate daily slice (random ~400-600 rows per day) ──
+        
         sample_size = random.randint(400, 600)
         df_day = base_df.sample(n=min(sample_size, len(base_df)),
                                 replace=True,
                                 random_state=i).copy()
         df_day.reset_index(drop=True, inplace=True)
 
-        # Re-assign Order IDs to be unique per snapshot
+        
         df_day["Order ID"] = range(10001, 10001 + len(df_day))
 
-        # ── Inject anomalies on specific days ──────────────────
+        
         if inject_anomalies:
-            # Day 7: large volume spike
+            
             if i == 6:
                 extra = base_df.sample(n=300, replace=True, random_state=99)
                 df_day = pd.concat([df_day, extra], ignore_index=True)
                 logger.info(f"[DAY {i+1}] Injected volume spike: {len(df_day)} rows")
 
-            # Day 9: inject nulls + duplicate rows
+            
             if i == 8:
                 null_idx = df_day.sample(frac=0.05, random_state=42).index
                 df_day.loc[null_idx, "Customer Name"] = None
@@ -146,17 +134,17 @@ def simulate_daily_snapshots(
                 df_day = pd.concat([df_day, dupes], ignore_index=True)
                 logger.info(f"[DAY {i+1}] Injected nulls + duplicates")
 
-            # Day 10: inject outlier Sales values
+            
             if i == 9:
                 outlier_idx = df_day.sample(n=10, random_state=55).index
                 df_day.loc[outlier_idx, "Sales"] = 9999999.0
                 df_day.loc[outlier_idx, "Profit"] = -999999.0
                 logger.info(f"[DAY {i+1}] Injected outlier values")
 
-        # ── Add ingestion timestamp ─────────────────────────────
+        
         df_day = add_ingestion_timestamp(df_day, timestamp=day)
 
-        # ── Save snapshot ────────────────────────────────────────
+        
         filename = f"snapshot_{day_str}.csv"
         filepath = os.path.join(snapshots_dir, filename)
         df_day.to_csv(filepath, index=False)
@@ -167,9 +155,7 @@ def simulate_daily_snapshots(
     return snapshot_paths
 
 
-# ─────────────────────────────────────────────────────────
-# 4. LOAD LATEST SNAPSHOT
-# ─────────────────────────────────────────────────────────
+
 def load_latest_snapshot(snapshots_dir: str) -> pd.DataFrame:
     """
     Load the most recent snapshot CSV from the snapshots directory.
@@ -194,9 +180,7 @@ def load_latest_snapshot(snapshots_dir: str) -> pd.DataFrame:
     return load_csv(latest)
 
 
-# ─────────────────────────────────────────────────────────
-# 5. LOAD PREVIOUS SNAPSHOT (for schema/drift comparison)
-# ─────────────────────────────────────────────────────────
+
 def load_previous_snapshot(snapshots_dir: str,
                             steps_back: int = 1) -> pd.DataFrame:
     """
@@ -225,9 +209,7 @@ def load_previous_snapshot(snapshots_dir: str,
     return load_csv(prev)
 
 
-# ─────────────────────────────────────────────────────────
-# QUICK TEST  (run this file directly to verify)
-# ─────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
     BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     CSV_PATH   = os.path.join(BASE_DIR, "data", "Ecommerce_Sales_Data_2024_2025.csv")
